@@ -75,8 +75,7 @@ def evaluate_summaries(predictions: list[str], references: list[str]) -> dict:
     print("Evalyuating predictions using rouge")
     start = time.time()
     rouge_results = rouge.compute(
-        predictions=predictions,
-        references=references,
+        predictions=predictions, references=references, use_aggregator=False
     )
     elapsed = time.time() - start
     print(f"Evaluated in {elapsed:.2f} seconds")
