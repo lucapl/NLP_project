@@ -12,6 +12,16 @@ def get_length(
         data: ds.Dataset,
         column: str,
         percentile=85) -> int:
+    """
+    Tokenizes the input and gets the length of selected percentile
+    Args:
+        tokenizer: pretrained model tokenizer
+        data: raw dataset
+        column: column to measure,
+        percentile: percentile to choose
+    Returns:
+        length of the selected percentile
+    """
     tokenized_inputs = concatenate_datasets([data["train"], data["test"]]).map(
         lambda x: tokenizer(x[column], truncation=True),
         batched=True,
@@ -28,6 +38,18 @@ def preprocess_function(sample,
                         max_source_length: int,
                         padding="max_length",
                         data_prefix="summarize: ") -> trans.BatchEncoding:
+    """
+    Preprocessses the dataset and pads it
+    Args:
+        sample: batch of data
+        tokenizer: pretrained model tokenizer
+        max_target_length: max number of target tokens
+        max_source_length: max number of input tokens
+        padding: how to pad the data
+        data_prefix: prompt, prefix to add to each data point
+    Returns:
+        encoded batch of data
+    """
     inputs = [data_prefix + item for item in sample["dialogue"]]
 
     # tokenize inputs
