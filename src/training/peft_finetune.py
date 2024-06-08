@@ -1,6 +1,6 @@
 import datasets as ds
 from datasets import load_dataset, concatenate_datasets
-from peft import LoraConfig, TaskType, get_peft_model
+import peft
 import transformers as trans
 import numpy as np
 
@@ -72,13 +72,14 @@ if __name__ == "__main__":
         batched=True,
         remove_columns=["dialogue", "summary", "id"])
 
-    peft_config = LoraConfig(task_type=TaskType.SEQ_2_SEQ_LM,
-                             inference_mode=False,
-                             r=8,
-                             lora_alpha=32,
-                             lora_dropout=0.1)
+    peft_config = peft.LoraConfig(
+        task_type=peft.TaskType.SEQ_2_SEQ_LM,
+        inference_mode=False,
+        r=8,
+        lora_alpha=32,
+        lora_dropout=0.1)
 
-    model = get_peft_model(model, peft_config)
+    model = peft.get_peft_model(model, peft_config)
     model.print_trainable_parameters()
 
     training_args = trans.Seq2SeqTrainingArguments(
