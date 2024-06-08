@@ -23,7 +23,9 @@ def get_length(
 
 
 def preprocess_function(sample,
+                        tokenizer: trans.PreTrainedTokenizer,
                         max_target_length: int,
+                        max_source_length: int,
                         padding="max_length",
                         data_prefix="summarize: ") -> trans.BatchEncoding:
     inputs = [data_prefix + item for item in sample["dialogue"]]
@@ -55,7 +57,7 @@ def preprocess_function(sample,
     return model_inputs
 
 
-if __name__ == "__main__":
+def main():
     data = load_dataset("Samsung/samsum")
 
     model = trans.AutoModelForSeq2SeqLM.from_pretrained(MODEL_NAME)
@@ -68,7 +70,10 @@ if __name__ == "__main__":
     print(f"Max target length: {max_target_length}")
 
     tokenized_dataset = data.map(
-        lambda sample: preprocess_function(sample, max_target_length),
+        lambda sample: preprocess_function(sample,
+                                           tokenizer,
+                                           max_target_length,
+                                           max_source_length),
         batched=True,
         remove_columns=["dialogue", "summary", "id"])
 
@@ -116,3 +121,7 @@ if __name__ == "__main__":
     peft_model_id = "results"
     trainer.model.save_pretrained(peft_model_id)
     tokenizer.save_pretrained(peft_model_id)
+
+
+if __name__ == "__main__":
+    main()
