@@ -38,9 +38,7 @@ def main() -> None:
     print(df.mean())
 
     df["samsum_test_id"] = dataset["test"]["id"]
-    filename = (
-        datetime.datetime.now().strftime("%Y_%d_%m_%H_%M") + "_results.csv"
-    )
+    filename = datetime.datetime.now().strftime("%Y_%d_%m_%H_%M") + "_results.csv"
 
     df.to_csv(filename)
 

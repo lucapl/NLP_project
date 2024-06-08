@@ -12,6 +12,10 @@ pip install -r requirements.txt
 ```
 python3 src/eval.py
 ```
+3. Run the gradio UI
+```
+python3 src/ui.py
+```
 
 ### Development
 1. Install development packages
