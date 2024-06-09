@@ -6,6 +6,8 @@ import evaluate
 import pandas as pd
 import transformers
 
+from src.data.processing import tokenize_dataset
+
 DATASET = "Samsung/samsum"
 MODEL = "google-t5/t5-small"
 BERTSCORE_MODEL = "microsoft/deberta-xlarge-mnli"
@@ -14,20 +16,51 @@ BERTSCORE_MODEL = "microsoft/deberta-xlarge-mnli"
 def main() -> None:
     dataset = datasets.load_dataset(DATASET, trust_remote_code=True)
     assert isinstance(dataset, datasets.DatasetDict)
-    pipe = transformers.pipeline("summarization", model=MODEL)
+    model = transformers.AutoModelForSeq2SeqLM.from_pretrained(MODEL)
+    tokenizer = transformers.AutoTokenizer.from_pretrained(MODEL)
+    # pipe = transformers.pipeline("summarization", model=MODEL)
+    tokenized_dataset = tokenize_dataset(dataset, tokenizer)
+
+    training_args = transformers.Seq2SeqTrainingArguments(
+        output_dir=".output/t5-summarizer",
+        learning_rate=1e-3,
+        per_device_train_batch_size=64,
+        per_device_eval_batch_size=64,
+        num_train_epochs=3,
+        weight_decay=0.01,
+        evaluation_strategy="epoch",
+        save_strategy="epoch",
+        load_best_model_at_end=True,
+        remove_unused_columns=False
+    )
+
+    data_collator = transformers.DataCollatorForSeq2Seq(
+        tokenizer,
+        model,
+        return_tensors="pt",
+        label_pad_token_id=-100,
+        pad_to_multiple_of=8)
+
+    trainer = transformers.Seq2SeqTrainer(
+        model=model,
+        args=training_args,
+        eval_dataset=tokenized_dataset["test"],
+        data_collator=data_collator
+    )
 
     dialogues = dataset["test"]["dialogue"]
     print(f"Summarizing {len(dialogues)} docs")
     start = time.time()
-    summaries = pipe(dialogues, max_length=100)
+    # summaries = pipe(dialogues, max_length=100)
+    preds = trainer.predict(tokenized_dataset["test"])
     elapsed = time.time() - start
     print(f"Finished summarizing in {elapsed:.2f} seconds")
 
-    predictions = []
-    assert summaries is not None
-    for summary in summaries:
-        assert isinstance(summary, dict)
-        predictions.append(summary["summary_text"])
+    predictions = preds[""]
+    # assert summaries is not None
+    # for summary in summaries:
+    #     assert isinstance(summary, dict)
+    #     predictions.append(summary["summary_text"])
 
     references = dataset["test"]["summary"]
 
