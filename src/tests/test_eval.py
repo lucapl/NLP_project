@@ -1,4 +1,4 @@
-from eval import evaluate_summaries
+from src.eval import evaluate_summaries
 
 
 def test_evaluate_summaries():
