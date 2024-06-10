@@ -1,18 +1,16 @@
 import datetime
 import os
 import pathlib
-import string
 import time
 
 import datasets
 import evaluate
 import pandas as pd
-import transformers
 
-from summarizer import Summarizer
+from summarizer import Summarizer, T5Summarizer
 
 DATASET = "Samsung/samsum"
-MODEL = "google-t5/t5-small"
+MODEL = "microsoft/Phi-3-mini-4k-instruct"
 BERTSCORE_MODEL = "microsoft/deberta-v3-small"
 
 
@@ -20,19 +18,10 @@ def main() -> None:
     dataset = datasets.load_dataset(DATASET, trust_remote_code=True)
     assert isinstance(dataset, datasets.DatasetDict)
 
-    pipe = transformers.pipeline(
-        "text-generation",
-        model=MODEL,
-        max_new_tokens=100,  # chosen roughly by the longest summary in testset
-    )
-
-    assert isinstance(pipe, transformers.TextGenerationPipeline)
-    summarizer = Summarizer(
-        pipeline=pipe, prompt_template=string.Template("summarize: $dialogue")
-    )
+    summarizer = T5Summarizer(model="lucapl/t5-summarizer-samsum")
 
     testset = dataset["test"]
-    testset = testset.shuffle(seed=42).take(2)  # take only small subset to speed up
+    testset = testset.shuffle(seed=42).take(10)  # take only small subset to speed up
     metrics = evaluate_summarizer(testset, summarizer)
 
     df = pd.DataFrame.from_dict(metrics)

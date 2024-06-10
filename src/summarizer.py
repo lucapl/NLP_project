@@ -4,24 +4,51 @@ import transformers
 
 
 class Summarizer:
-    def __init__(
-        self,
-        pipeline: transformers.TextGenerationPipeline,
-        prompt_template: string.Template = string.Template("$dialogue"),
-    ):
-        self.pipeline = pipeline
+    prompt_template: string.Template
+
+    def __init__(self, prompt_template: string.Template):
         self.prompt_template = prompt_template
-        assert prompt_template.get_identifiers() == ["dialogue"], "Invalid template"
 
     def __call__(self, dialogues: list[str]) -> list[str]:
+        assert self.prompt_template.get_identifiers() == ["dialogue"]
         prompts = []
         for dial in dialogues:
             prompts.append(self.prompt_template.substitute(dialogue=dial))
 
-        predictions = self.pipeline(prompts)
-        assert predictions is not None
+        return self.summarize(prompts)
+
+    def summarize(self, prompts: list[str]) -> list[str]:
+        raise NotImplementedError
+
+
+class T5Summarizer(Summarizer):
+    def __init__(self, model="google-t5/t5-small", tokenizer="google-t5/t5-small"):
+        self.model = transformers.T5ForConditionalGeneration.from_pretrained(model)
+        self.tokenizer = transformers.T5Tokenizer.from_pretrained(tokenizer)
+        self.prompt_template = string.Template("summarize: $dialogue")
+
+    def summarize(self, prompts: list[str]) -> list[str]:
+        inputs = self.tokenizer(prompts, return_tensors="pt", padding=True)
+
+        outputs = self.model.generate(  # type: ignore
+            input_ids=inputs["input_ids"],
+            attention_mask=inputs["attention_mask"],
+            do_sample=False,
+            max_new_tokens=100
+        )
+
+        return self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
+
+
+class TextGenerationSummarizer(Summarizer):
+    def __init__(self, model, prompt_template: string.Template):
+        self.pipe = transformers.pipeline("text-generation", model=model)
+        self.prompt_template = prompt_template
+
+    def summarize(self, prompts: list[str]) -> list[str]:
+        predictions = self.pipe(prompts, max_new_tokens=100)
+        assert predictions
         summaries = []
         for pred in predictions:
-            assert isinstance(pred, list)
-            summaries.append(pred[0]["generated_text"])
+            summaries.append(pred[0]["generated_text"])  # type: ignore
         return summaries
