@@ -1,4 +1,19 @@
-from src.eval import evaluate_summaries
+from src.eval import evaluate_summaries, generate_summaries
+from transformers import TextGenerationPipeline
+
+
+def test_generate_summaries():
+    class UpperPipeline(TextGenerationPipeline):
+        def __init__(self):
+            pass
+
+        def __call__(self, inputs):
+            return [{"generated_text": x.upper()} for x in inputs]
+
+    predictions = generate_summaries(
+        ["Hello there", "general, Kenobi!"], UpperPipeline()
+    )
+    assert predictions == ["HELLO THERE", "GENERAL, KENOBI!"]
 
 
 def test_evaluate_summaries():

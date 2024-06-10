@@ -17,18 +17,8 @@ def main() -> None:
     pipe = transformers.pipeline("summarization", model=MODEL)
 
     dialogues = dataset["test"]["dialogue"]
-    print(f"Summarizing {len(dialogues)} docs")
-    start = time.time()
-    summaries = pipe(dialogues, max_length=100)
-    elapsed = time.time() - start
-    print(f"Finished summarizing in {elapsed:.2f} seconds")
 
-    predictions = []
-    assert summaries is not None
-    for summary in summaries:
-        assert isinstance(summary, dict)
-        predictions.append(summary["summary_text"])
-
+    predictions = generate_summaries(dialogues, pipe)
     references = dataset["test"]["summary"]
 
     metrics = evaluate_summaries(predictions, references)
@@ -41,6 +31,29 @@ def main() -> None:
     filename = datetime.datetime.now().strftime("%Y_%d_%m_%H_%M") + "_results.csv"
 
     df.to_csv(filename)
+
+
+def generate_summaries(dialogues: list[str], pipe: transformers.Pipeline) -> list[str]:
+    """Generate summaries of dialogues using huggingface transformers pipeline
+        Args:
+            dialogues: list of dialogues to summarize
+            pipeline: pipeline that generates summaries for dialogues
+              resulting summary should be in its dict result in field 'generated_text'
+        Returns:
+            list of predicted summaries
+    """
+    print(f"Summarizing {len(dialogues)} docs")
+    start = time.time()
+    summaries = pipe(dialogues)
+    elapsed = time.time() - start
+    print(f"Finished summarizing in {elapsed:.2f} seconds")
+
+    predictions = []
+    assert summaries is not None
+    for summary in summaries:
+        assert isinstance(summary, dict)
+        predictions.append(summary["generated_text"])
+    return predictions
 
 
 def evaluate_summaries(predictions: list[str], references: list[str]) -> dict:
