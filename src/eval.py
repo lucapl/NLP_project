@@ -8,29 +8,33 @@ import transformers
 
 DATASET = "Samsung/samsum"
 MODEL = "google-t5/t5-small"
-BERTSCORE_MODEL = "microsoft/deberta-xlarge-mnli"
+BERTSCORE_MODEL = "microsoft/deberta-v3-small"
 
 
 def main() -> None:
     dataset = datasets.load_dataset(DATASET, trust_remote_code=True)
     assert isinstance(dataset, datasets.DatasetDict)
-    pipe = transformers.pipeline("summarization", model=MODEL)
 
-    dialogues = dataset["test"]["dialogue"]
-
-    predictions = generate_summaries(dialogues, pipe)
-    references = dataset["test"]["summary"]
-
-    metrics = evaluate_summaries(predictions, references)
+    pipe = transformers.pipeline("text-generation", model=MODEL)
+    testset = dataset['test'].take(1)
+    metrics = evaluate_pipeline(testset, pipe)
 
     df = pd.DataFrame.from_dict(metrics)
     print("Means of the metrics:")
-    print(df.mean())
+    print(df.drop(columns="id").mean())
 
-    df["samsum_test_id"] = dataset["test"]["id"]
     filename = datetime.datetime.now().strftime("%Y_%d_%m_%H_%M") + "_results.csv"
-
     df.to_csv(filename)
+
+
+def evaluate_pipeline(testset: datasets.Dataset, pipe: transformers.Pipeline) -> dict:
+    dialogues = testset["dialogue"]
+    predictions = generate_summaries(dialogues, pipe)
+
+    references = testset["summary"]
+    metrics = evaluate_summaries(predictions, references)
+    metrics["id"] = testset["id"]
+    return metrics
 
 
 def generate_summaries(dialogues: list[str], pipe: transformers.Pipeline) -> list[str]:
@@ -51,8 +55,8 @@ def generate_summaries(dialogues: list[str], pipe: transformers.Pipeline) -> lis
     predictions = []
     assert summaries is not None
     for summary in summaries:
-        assert isinstance(summary, dict)
-        predictions.append(summary["generated_text"])
+        assert isinstance(summary, list)
+        predictions.append(summary[0]["generated_text"])
     return predictions
 
 
