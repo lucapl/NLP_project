@@ -1,5 +1,6 @@
 import datetime
 import os
+import string
 import pathlib
 import time
 
@@ -7,7 +8,7 @@ import datasets
 import evaluate
 import pandas as pd
 
-from summarizer import Summarizer, T5Summarizer
+from summarizer import Summarizer, TextGenerationSummarizer
 
 DATASET = "Samsung/samsum"
 MODEL = "microsoft/Phi-3-mini-4k-instruct"
@@ -18,7 +19,9 @@ def main() -> None:
     dataset = datasets.load_dataset(DATASET, trust_remote_code=True)
     assert isinstance(dataset, datasets.DatasetDict)
 
-    summarizer = T5Summarizer(model="lucapl/t5-summarizer-samsum")
+    summarizer = TextGenerationSummarizer(MODEL, prompt_template=string.Template(
+        "<|user|>\nBriefly summarize this dialogue: $dialogue <|end|>\n<|assistant|>"))
+    # summarizer = T5Summarizer(model="lucapl/t5-summarizer-samsum")
 
     testset = dataset["test"]
     testset = testset.shuffle(seed=42).take(10)  # take only small subset to speed up
