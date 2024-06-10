@@ -9,24 +9,23 @@ import datasets
 import evaluate
 import pandas as pd
 
-from summarizer import Summarizer, TextGenerationSummarizer
+from summarizer import Summarizer, T5Summarizer, TextGenerationSummarizer
 
-DATASET = "Samsung/samsum"
-MODEL = "microsoft/Phi-3-mini-4k-instruct"
 BERTSCORE_MODEL = "microsoft/deberta-v3-small"
 
 
-def main(args) -> None:
-    dataset = datasets.load_dataset(DATASET, trust_remote_code=True)
-    assert isinstance(dataset, datasets.DatasetDict)
+def main(count: int, prompt_template: str, model: str, dataset: str, summarizer_type: str, info: str) -> None:
+    ds = datasets.load_dataset(dataset, trust_remote_code=True)
 
-    summarizer = TextGenerationSummarizer(MODEL, prompt_template=string.Template(
-        "<|user|>\nBriefly summarize this dialogue: $dialogue <|end|>\n<|assistant|>"))
-    # summarizer = T5Summarizer(model="lucapl/t5-summarizer-samsum")
+    if summarizer_type == 'T5':
+        summarizer = T5Summarizer(model=model)
+    else:
+        summarizer = TextGenerationSummarizer(
+            model, prompt_template=string.Template(prompt_template))
 
-    testset = dataset["test"]
-    testset = testset.shuffle(seed=42).take(
-        args.count)  # take only small subset to speed up
+    assert isinstance(ds, datasets.DatasetDict)
+    testset = ds["test"]
+    testset = testset.shuffle(seed=42).take(count)  # take only small subset to speed up
     metrics = evaluate_summarizer(testset, summarizer)
 
     df = pd.DataFrame.from_dict(metrics)
@@ -37,6 +36,7 @@ def main(args) -> None:
     )  # no newlines in csv
 
     filename = datetime.datetime.now().strftime("%Y_%d_%m_%H_%M") + "_results.csv"
+    filename = model.split('/')[-1] + '_' + info + '_' + filename
 
     output_path = pathlib.Path("outputs/")
     if not output_path.exists():
@@ -127,5 +127,35 @@ if __name__ == "__main__":
         '-c', '--count', type=int, default=10,
         help='How many examples from the dataset to summarize'
     )
+
+    parser.add_argument(
+        '--prompt-template', type=str, default='summarize the dialogue: $dialogue',
+        help="Prompt template to use with LLM (should have $dialogue placeholder in it)"
+    )
+
+    parser.add_argument(
+        '--model', type=str, default="lucapl/t5-summarizer-samsum", help="Huggingface model"
+    )
+
+    parser.add_argument(
+        '--dataset', type=str, default="Samsung/samsum"
+    )
+
+    parser.add_argument(
+        '--summarizer_type', choices=['T5', 'textGeneration'], default='T5',
+        help="What type of summarizer to use"
+    )
+
+    parser.add_argument(
+        '--info', type=str, default='', help='Additional info to put into log filename'
+    )
+
     args = parser.parse_args()
-    main(args)
+    main(
+        count=args.count,
+        prompt_template=args.prompt_template,
+        model=args.model,
+        dataset=args.dataset,
+        summarizer_type=args.summarizer_type,
+        info=args.info
+    )

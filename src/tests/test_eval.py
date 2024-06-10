@@ -1,6 +1,6 @@
 import pytest
 
-from eval import evaluate_summaries
+from evaluator import evaluate_summaries
 
 
 def test_evaluate_summaries():
