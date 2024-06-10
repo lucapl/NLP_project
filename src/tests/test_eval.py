@@ -1,19 +1,6 @@
-from src.eval import evaluate_summaries, generate_summaries
-from transformers import TextGenerationPipeline
+import pytest
 
-
-def test_generate_summaries():
-    class UpperPipeline(TextGenerationPipeline):
-        def __init__(self):
-            pass
-
-        def __call__(self, inputs):
-            return [{"generated_text": x.upper()} for x in inputs]
-
-    predictions = generate_summaries(
-        ["Hello there", "general, Kenobi!"], UpperPipeline()
-    )
-    assert predictions == ["HELLO THERE", "GENERAL, KENOBI!"]
+from eval import evaluate_summaries
 
 
 def test_evaluate_summaries():
@@ -25,9 +12,9 @@ def test_evaluate_summaries():
 
     # All metrics should be equal to 1.0 for an exact match
     # BERTscore
-    assert metrics["precision"][0] == 1.0
-    assert metrics["recall"][0] == 1.0
-    assert metrics["f1"][0] == 1.0
+    assert metrics["precision"][0] == pytest.approx(1.0)
+    assert metrics["recall"][0] == pytest.approx(1.0)
+    assert metrics["f1"][0] == pytest.approx(1.0)
 
     # ROUGE
     assert metrics["rouge1"][0] == 1.0

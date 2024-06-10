@@ -1,12 +1,15 @@
 import datetime
-import time
 import os
 import pathlib
+import string
+import time
 
 import datasets
 import evaluate
 import pandas as pd
 import transformers
+
+from summarizer import Summarizer
 
 DATASET = "Samsung/samsum"
 MODEL = "google-t5/t5-small"
@@ -20,18 +23,24 @@ def main() -> None:
     pipe = transformers.pipeline(
         "text-generation",
         model=MODEL,
-        max_new_tokens=100   # chosen roughly by the longest summary in testset
+        max_new_tokens=100,  # chosen roughly by the longest summary in testset
     )
 
-    testset = dataset['test']
-    testset = testset.shuffle(seed=42).take(20)  # take only small subset to speed up
-    metrics = evaluate_pipeline(testset, pipe)
+    assert isinstance(pipe, transformers.TextGenerationPipeline)
+    summarizer = Summarizer(
+        pipeline=pipe, prompt_template=string.Template("summarize: $dialogue")
+    )
+
+    testset = dataset["test"]
+    testset = testset.shuffle(seed=42).take(2)  # take only small subset to speed up
+    metrics = evaluate_summarizer(testset, summarizer)
 
     df = pd.DataFrame.from_dict(metrics)
     print("Means of the metrics:")
     print(df.drop(columns=["id", "prediction"]).mean())
-    df["prediction"] = df["prediction"].str.replace(
-        "\n", " ").str.replace("\r", " ")  # no newlines in csv
+    df["prediction"] = (
+        df["prediction"].str.replace("\n", " ").str.replace("\r", " ")
+    )  # no newlines in csv
 
     filename = datetime.datetime.now().strftime("%Y_%d_%m_%H_%M") + "_results.csv"
 
@@ -41,17 +50,18 @@ def main() -> None:
     df.to_csv(output_path / filename)
 
 
-def evaluate_pipeline(testset: datasets.Dataset, pipe: transformers.Pipeline) -> dict:
-    """Evaluates given huggingface model in terms of summarization
-        Args:
-           testset: dataset which contains columns: "dialogue", "summary" and "id"
-            where dialogue is a text to summarize and summary is refernce ground truth
-        Returns:
-            dictionary with different metrics calculated for each dialogue in testset
-            along withg "id" for identification and "predictions" (generated text)
+def evaluate_summarizer(testset: datasets.Dataset, summarizer: Summarizer) -> dict:
+    """Evaluates given summarizer
+    Args:
+       testset: dataset which contains columns: "dialogue", "summary" and "id"
+          where dialogue is a text to summarize and summary is refernce ground truth
+       summarizer: Summarizer that on calling summarizes list of dialogues
+    Returns:
+        dictionary with different metrics calculated for each dialogue in testset
+        along withg "id" for identification and "predictions" (generated text)
     """
     dialogues = testset["dialogue"]
-    predictions = generate_summaries(dialogues, pipe)
+    predictions = generate_summaries(dialogues, summarizer)
 
     references = testset["summary"]
     results = evaluate_summaries(predictions, references)
@@ -60,27 +70,21 @@ def evaluate_pipeline(testset: datasets.Dataset, pipe: transformers.Pipeline) ->
     return results
 
 
-def generate_summaries(dialogues: list[str], pipe: transformers.Pipeline) -> list[str]:
+def generate_summaries(dialogues: list[str], summarizer: Summarizer) -> list[str]:
     """Generate summaries of dialogues using huggingface transformers pipeline
-        Args:
-            dialogues: list of dialogues to summarize
-            pipeline: pipeline that generates summaries for dialogues
-              resulting summary should be in its dict result in field 'generated_text'
-        Returns:
-            list of predicted summaries
+    Args:
+        dialogues: list of dialogues to summarize
+        pipeline: pipeline that generates summaries for dialogues
+          resulting summary should be in its dict result in field 'generated_text'
+    Returns:
+        list of predicted summaries
     """
     print(f"Summarizing {len(dialogues)} docs")
     start = time.time()
-    summaries = pipe(dialogues)
+    summaries = summarizer(dialogues)
     elapsed = time.time() - start
     print(f"Finished summarizing in {elapsed:.2f} seconds")
-
-    predictions = []
-    assert summaries is not None
-    for summary in summaries:
-        assert isinstance(summary, list)
-        predictions.append(summary[0]["generated_text"])
-    return predictions
+    return summaries
 
 
 def evaluate_summaries(predictions: list[str], references: list[str]) -> dict:

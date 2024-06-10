@@ -1,7 +1,8 @@
-from datasets import load_dataset
 import peft
 import transformers as trans
-from src.data.processing import tokenize_dataset
+from datasets import load_dataset
+
+from data.processing import tokenize_dataset
 
 MODEL_NAME = "google-t5/t5-small"
 
@@ -19,7 +20,8 @@ def main():
         inference_mode=False,
         r=8,
         lora_alpha=32,
-        lora_dropout=0.1)
+        lora_dropout=0.1,
+    )
 
     model = peft.get_peft_model(model, peft_config)
     model.print_trainable_parameters()
@@ -34,7 +36,7 @@ def main():
         evaluation_strategy="epoch",
         save_strategy="epoch",
         load_best_model_at_end=True,
-        remove_unused_columns=False
+        remove_unused_columns=False,
     )
 
     data_collator = trans.DataCollatorForSeq2Seq(
@@ -42,7 +44,8 @@ def main():
         model,
         return_tensors="pt",
         label_pad_token_id=-100,
-        pad_to_multiple_of=8)
+        pad_to_multiple_of=8,
+    )
 
     trainer = trans.Seq2SeqTrainer(
         model=model,
