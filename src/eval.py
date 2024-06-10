@@ -1,3 +1,4 @@
+import argparse
 import datetime
 import os
 import string
@@ -15,7 +16,7 @@ MODEL = "microsoft/Phi-3-mini-4k-instruct"
 BERTSCORE_MODEL = "microsoft/deberta-v3-small"
 
 
-def main() -> None:
+def main(args) -> None:
     dataset = datasets.load_dataset(DATASET, trust_remote_code=True)
     assert isinstance(dataset, datasets.DatasetDict)
 
@@ -24,7 +25,8 @@ def main() -> None:
     # summarizer = T5Summarizer(model="lucapl/t5-summarizer-samsum")
 
     testset = dataset["test"]
-    testset = testset.shuffle(seed=42).take(10)  # take only small subset to speed up
+    testset = testset.shuffle(seed=42).take(
+        args.count)  # take only small subset to speed up
     metrics = evaluate_summarizer(testset, summarizer)
 
     df = pd.DataFrame.from_dict(metrics)
@@ -120,4 +122,10 @@ def evaluate_summaries(predictions: list[str], references: list[str]) -> dict:
 
 
 if __name__ == "__main__":
-    main()
+    parser = argparse.ArgumentParser()
+    parser.add_argument(
+        '-c', '--count', type=int, default=10,
+        help='How many examples from the dataset to summarize'
+    )
+    args = parser.parse_args()
+    main(args)

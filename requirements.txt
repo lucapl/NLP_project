@@ -1,8 +1,8 @@
-bert-score==0.3.13
-rouge_score==0.1.2
-datasets==2.19.2
-evaluate==0.4.2
-transformers==4.41.2
-py7zr==0.21.0
-peft==0.11.1
-gradio==4.36.0
+bert-score
+rouge_score
+datasets
+evaluate
+transformers
+py7zr
+peft
+gradio

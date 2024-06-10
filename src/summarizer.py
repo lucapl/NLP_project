@@ -10,7 +10,6 @@ class Summarizer:
         self.prompt_template = prompt_template
 
     def __call__(self, dialogues: list[str]) -> list[str]:
-        assert self.prompt_template.get_identifiers() == ["dialogue"]
         prompts = []
         for dial in dialogues:
             prompts.append(self.prompt_template.substitute(dialogue=dial))
@@ -42,11 +41,17 @@ class T5Summarizer(Summarizer):
 
 class TextGenerationSummarizer(Summarizer):
     def __init__(self, model, prompt_template: string.Template):
-        self.pipe = transformers.pipeline("text-generation", model=model)
+        self.pipe = transformers.pipeline(
+            "text-generation",
+            model=model,
+            max_new_tokens=100,
+            return_full_text=False,
+            device=0
+        )
         self.prompt_template = prompt_template
 
     def summarize(self, prompts: list[str]) -> list[str]:
-        predictions = self.pipe(prompts, max_new_tokens=100)
+        predictions = self.pipe(prompts)
         assert predictions
         summaries = []
         for pred in predictions:
