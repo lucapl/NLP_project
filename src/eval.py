@@ -1,5 +1,7 @@
 import datetime
 import time
+import os
+import pathlib
 
 import datasets
 import evaluate
@@ -15,26 +17,47 @@ def main() -> None:
     dataset = datasets.load_dataset(DATASET, trust_remote_code=True)
     assert isinstance(dataset, datasets.DatasetDict)
 
-    pipe = transformers.pipeline("text-generation", model=MODEL)
-    testset = dataset['test'].take(1)
+    pipe = transformers.pipeline(
+        "text-generation",
+        model=MODEL,
+        max_new_tokens=100   # chosen roughly by the longest summary in testset
+    )
+
+    testset = dataset['test']
+    testset = testset.shuffle(seed=42).take(20)  # take only small subset to speed up
     metrics = evaluate_pipeline(testset, pipe)
 
     df = pd.DataFrame.from_dict(metrics)
     print("Means of the metrics:")
-    print(df.drop(columns="id").mean())
+    print(df.drop(columns=["id", "prediction"]).mean())
+    df["prediction"] = df["prediction"].str.replace(
+        "\n", " ").str.replace("\r", " ")  # no newlines in csv
 
     filename = datetime.datetime.now().strftime("%Y_%d_%m_%H_%M") + "_results.csv"
-    df.to_csv(filename)
+
+    output_path = pathlib.Path("outputs/")
+    if not output_path.exists():
+        os.mkdir(output_path)
+    df.to_csv(output_path / filename)
 
 
 def evaluate_pipeline(testset: datasets.Dataset, pipe: transformers.Pipeline) -> dict:
+    """Evaluates given huggingface model in terms of summarization
+        Args:
+           testset: dataset which contains columns: "dialogue", "summary" and "id"
+            where dialogue is a text to summarize and summary is refernce ground truth
+        Returns:
+            dictionary with different metrics calculated for each dialogue in testset
+            along withg "id" for identification and "predictions" (generated text)
+    """
     dialogues = testset["dialogue"]
     predictions = generate_summaries(dialogues, pipe)
 
     references = testset["summary"]
-    metrics = evaluate_summaries(predictions, references)
-    metrics["id"] = testset["id"]
-    return metrics
+    results = evaluate_summaries(predictions, references)
+    results["id"] = testset["id"]
+    results["prediction"] = predictions
+    return results
 
 
 def generate_summaries(dialogues: list[str], pipe: transformers.Pipeline) -> list[str]:
