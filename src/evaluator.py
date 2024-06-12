@@ -7,6 +7,7 @@ import time
 
 import datasets
 import evaluate
+import numpy as np
 import pandas as pd
 
 from summarizer import Summarizer, T5Summarizer, TextGenerationSummarizer
@@ -26,11 +27,13 @@ def main(count: int, prompt_template: str, model: str, dataset: str, summarizer_
     assert isinstance(ds, datasets.DatasetDict)
     testset = ds["test"]
     testset = testset.shuffle(seed=42).take(count)  # take only small subset to speed up
-    metrics = evaluate_summarizer(testset, summarizer)
+    results, metrics = evaluate_summarizer(testset, summarizer)
 
     df = pd.DataFrame.from_dict(metrics)
     print("Means of the metrics:")
-    print(df.drop(columns=["id", "prediction"]).mean())
+    print(df.mean())
+    df["prediction"] = results["prediction"]
+    df["id"] = results["id"]
     df["prediction"] = (
         df["prediction"].str.replace("\n", " ").str.replace("\r", " ")
     )  # no newlines in csv
@@ -44,7 +47,7 @@ def main(count: int, prompt_template: str, model: str, dataset: str, summarizer_
     df.to_csv(output_path / filename)
 
 
-def evaluate_summarizer(testset: datasets.Dataset, summarizer: Summarizer) -> dict:
+def evaluate_summarizer(testset: datasets.Dataset, summarizer: Summarizer) -> tuple[dict, dict]:
     """Evaluates given summarizer
     Args:
        testset: dataset which contains columns: "dialogue", "summary" and "id"
@@ -58,10 +61,11 @@ def evaluate_summarizer(testset: datasets.Dataset, summarizer: Summarizer) -> di
     predictions = generate_summaries(dialogues, summarizer)
 
     references = testset["summary"]
-    results = evaluate_summaries(predictions, references)
+    metrics = evaluate_summaries(predictions, references)
+    results = {}
     results["id"] = testset["id"]
     results["prediction"] = predictions
-    return results
+    return results, metrics
 
 
 def generate_summaries(dialogues: list[str], summarizer: Summarizer) -> list[str]:
@@ -119,6 +123,17 @@ def evaluate_summaries(predictions: list[str], references: list[str]) -> dict:
 
     bert_results.update(rouge_results)
     return bert_results
+
+
+def calculate_means(metrics: dict) -> dict:
+    """Given a result dictionary from the run for each summarized text
+       return just means of each metric
+    """
+    K = ["precision", "recall", "f1", "rouge1", "rouge2", "rougeL", "rougeLsum"]
+    means = {}
+    for metric in K:
+        means["mean_" + metric] = np.mean(metrics[metric])
+    return means
 
 
 if __name__ == "__main__":

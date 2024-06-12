@@ -6,3 +6,4 @@ transformers
 py7zr
 peft
 gradio
+wandb
