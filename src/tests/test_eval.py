@@ -1,6 +1,6 @@
 import pytest
 
-from evaluator import evaluate_summaries
+from evaluator import evaluate_summaries, calculate_means
 
 
 def test_evaluate_summaries():
@@ -21,3 +21,14 @@ def test_evaluate_summaries():
     assert metrics["rouge2"][0] == 1.0
     assert metrics["rougeL"][0] == 1.0
     assert metrics["rougeLsum"][0] == 1.0
+
+
+def test_calculate_means():
+    M = ["precision", "recall", "f1", "rouge1", "rouge2", "rougeL", "rougeLsum"]
+    A = [1, 1, 1, 1, 1, 1, 1]
+    B = [2, 3, 4, 5, 0, 0.5, 1]
+    metrics = {m: [a, b] for m, a, b in zip(M, A, B)}
+
+    res = calculate_means(metrics)
+    R = [0.5, 2, 2.5, 3, 0.5, 0.75, 1]
+    assert {"mean_" + m: r for m, r in zip(M, R)}
