@@ -1,30 +1,26 @@
 import gradio as gr
 import transformers
+from summarizer import Summarizer, T5Summarizer
 
-models = ["google-t5/t5-small", "google-t5/t5-base", "google-t5/t5-large"]
-pipelines: list[None | transformers.Pipeline] = [None] * 2
+models = ["google-t5/t5-small", "lucapl/t5-summarizer-samsum"]
+pipelines: list[Summarizer | None] = [None, None]
 
 
-def load_pipeline(model) -> transformers.Pipeline:
+def load_pipeline(model) -> Summarizer:
     global pipelines
     idx = models.index(model)
     if pipelines[idx] is None:
-        pipelines[idx] = transformers.pipeline(
-            "summarization", model=models[idx], max_length=100
-        )
+        if "t5" in model:
+            pipelines[idx] = T5Summarizer(model)
     res = pipelines[idx]
     assert res is not None
     return res
 
 
-def summarize(text, model):
-    pipe = load_pipeline(model)
-
-    results = pipe(text)
-    assert isinstance(results, list)
-    summary = results[0]
-    assert isinstance(summary, dict)
-    return summary["summary_text"]
+def summarize(text: str, model: str) -> str:
+    summarizer = load_pipeline(model)
+    results = summarizer([text])
+    return results[0]
 
 
 textbox = gr.Textbox(label="Type text to summarize here:", lines=3)
