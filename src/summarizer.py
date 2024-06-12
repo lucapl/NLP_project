@@ -33,7 +33,7 @@ class T5Summarizer(Summarizer):
             input_ids=inputs["input_ids"],
             attention_mask=inputs["attention_mask"],
             do_sample=False,
-            max_new_tokens=100
+            max_new_tokens=100,
         )
 
         return self.tokenizer.batch_decode(outputs, skip_special_tokens=True)
@@ -46,7 +46,7 @@ class TextGenerationSummarizer(Summarizer):
             model=model,
             max_new_tokens=100,
             return_full_text=False,
-            device=0
+            device=0,
         )
         self.prompt_template = prompt_template
 

@@ -1,10 +1,11 @@
-import datasets
-from numpy import maximum
-from summarizer import TextGenerationSummarizer
-from evaluator import evaluate_summarizer, calculate_means
-import wandb
 import string
+
+import datasets
+import wandb
 from wandb.sdk.data_types.trace_tree import Trace
+
+from evaluator import calculate_means, evaluate_summarizer
+from summarizer import TextGenerationSummarizer
 
 DATASET = "Samsung/samsum"
 COUNT = 100
@@ -37,9 +38,11 @@ if __name__ == "__main__":
         metrics["reference"] = testset["summary"]
 
         for i in range(COUNT):
-            inputs = {"query": testset[i]["dialogue"],
-                      "reference": testset[i]["summary"],
-                      "prompt": prompt}
+            inputs = {
+                "query": testset[i]["dialogue"],
+                "reference": testset[i]["summary"],
+                "prompt": prompt,
+            }
 
             outputs = {}
             outputs["prediction"] = results["prediction"][i]

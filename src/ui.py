@@ -1,5 +1,5 @@
 import gradio as gr
-import transformers
+
 from summarizer import Summarizer, T5Summarizer
 
 models = ["google-t5/t5-small", "lucapl/t5-summarizer-samsum"]

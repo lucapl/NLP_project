@@ -1,8 +1,9 @@
 import datasets
-from summarizer import T5Summarizer
-from evaluator import evaluate_summarizer, calculate_means
 import wandb
 from wandb.sdk.data_types.trace_tree import Trace
+
+from evaluator import calculate_means, evaluate_summarizer
+from summarizer import T5Summarizer
 
 DATASET = "Samsung/samsum"
 COUNT = 100
@@ -24,8 +25,11 @@ if __name__ == "__main__":
         metrics["reference"] = testset["summary"]
 
         for i in range(COUNT):
-            inputs = {"system_prompt": "summarize: ",
-                      "query": testset[i]["dialogue"], "reference": testset[i]["summary"]}
+            inputs = {
+                "system_prompt": "summarize: ",
+                "query": testset[i]["dialogue"],
+                "reference": testset[i]["summary"],
+            }
             outputs = {}
             outputs["prediction"] = results["prediction"][i]
             for row in metrics:

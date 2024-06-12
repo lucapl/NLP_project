@@ -1,8 +1,8 @@
 import argparse
 import datetime
 import os
-import string
 import pathlib
+import string
 import time
 
 import datasets
@@ -15,14 +15,22 @@ from summarizer import Summarizer, T5Summarizer, TextGenerationSummarizer
 BERTSCORE_MODEL = "microsoft/deberta-v3-small"
 
 
-def main(count: int, prompt_template: str, model: str, dataset: str, summarizer_type: str, info: str) -> None:
+def main(
+    count: int,
+    prompt_template: str,
+    model: str,
+    dataset: str,
+    summarizer_type: str,
+    info: str,
+) -> None:
     ds = datasets.load_dataset(dataset, trust_remote_code=True)
 
-    if summarizer_type == 'T5':
-        summarizer = T5Summarizer(model=model)
+    if summarizer_type == "T5":
+        summarizer: Summarizer = T5Summarizer(model=model)
     else:
         summarizer = TextGenerationSummarizer(
-            model, prompt_template=string.Template(prompt_template))
+            model, prompt_template=string.Template(prompt_template)
+        )
 
     assert isinstance(ds, datasets.DatasetDict)
     testset = ds["test"]
@@ -39,7 +47,7 @@ def main(count: int, prompt_template: str, model: str, dataset: str, summarizer_
     )  # no newlines in csv
 
     filename = datetime.datetime.now().strftime("%Y_%d_%m_%H_%M") + "_results.csv"
-    filename = model.split('/')[-1] + '_' + info + '_' + filename
+    filename = model.split("/")[-1] + "_" + info + "_" + filename
 
     output_path = pathlib.Path("outputs/")
     if not output_path.exists():
@@ -47,7 +55,9 @@ def main(count: int, prompt_template: str, model: str, dataset: str, summarizer_
     df.to_csv(output_path / filename)
 
 
-def evaluate_summarizer(testset: datasets.Dataset, summarizer: Summarizer) -> tuple[dict, dict]:
+def evaluate_summarizer(
+    testset: datasets.Dataset, summarizer: Summarizer
+) -> tuple[dict, dict]:
     """Evaluates given summarizer
     Args:
        testset: dataset which contains columns: "dialogue", "summary" and "id"
@@ -127,7 +137,7 @@ def evaluate_summaries(predictions: list[str], references: list[str]) -> dict:
 
 def calculate_means(metrics: dict) -> dict:
     """Given a result dictionary from the run for each summarized text
-       return just means of each metric
+    return just means of each metric
     """
     K = ["precision", "recall", "f1", "rouge1", "rouge2", "rougeL", "rougeLsum"]
     means = {}
@@ -139,30 +149,38 @@ def calculate_means(metrics: dict) -> dict:
 if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument(
-        '-c', '--count', type=int, default=10,
-        help='How many examples from the dataset to summarize'
+        "-c",
+        "--count",
+        type=int,
+        default=10,
+        help="How many examples from the dataset to summarize",
     )
 
     parser.add_argument(
-        '--prompt-template', type=str, default='summarize the dialogue: $dialogue',
-        help="Prompt template to use with LLM (should have $dialogue placeholder in it)"
+        "--prompt-template",
+        type=str,
+        default="summarize the dialogue: $dialogue",
+        help="Prompt template to use with LLM (should have $dialogue placeholder)",
     )
 
     parser.add_argument(
-        '--model', type=str, default="lucapl/t5-summarizer-samsum", help="Huggingface model"
+        "--model",
+        type=str,
+        default="lucapl/t5-summarizer-samsum",
+        help="Huggingface model",
+    )
+
+    parser.add_argument("--dataset", type=str, default="Samsung/samsum")
+
+    parser.add_argument(
+        "--summarizer_type",
+        choices=["T5", "textGeneration"],
+        default="T5",
+        help="What type of summarizer to use",
     )
 
     parser.add_argument(
-        '--dataset', type=str, default="Samsung/samsum"
-    )
-
-    parser.add_argument(
-        '--summarizer_type', choices=['T5', 'textGeneration'], default='T5',
-        help="What type of summarizer to use"
-    )
-
-    parser.add_argument(
-        '--info', type=str, default='', help='Additional info to put into log filename'
+        "--info", type=str, default="", help="Additional info to put into log filename"
     )
 
     args = parser.parse_args()
@@ -172,5 +190,5 @@ if __name__ == "__main__":
         model=args.model,
         dataset=args.dataset,
         summarizer_type=args.summarizer_type,
-        info=args.info
+        info=args.info,
     )
