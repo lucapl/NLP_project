@@ -1,4 +1,5 @@
 import datasets
+from numpy import maximum
 from summarizer import TextGenerationSummarizer
 from evaluator import evaluate_summarizer, calculate_means
 import wandb
@@ -24,9 +25,9 @@ if __name__ == "__main__":
     summarizer = TextGenerationSummarizer(model, string.Template(template))
 
     random.seed(42)
-    run = wandb.init(project="NLP_summarization", name=model)
+    for p in range(20):
+        run = wandb.init(project="NLP_summarization", name=model + str(p))
 
-    for p in range(3):
         trainset = trainset.shuffle(seed=42)
         number_of_shots = random.randint(1, 5)
         shots = trainset.take(number_of_shots)
@@ -41,11 +42,10 @@ if __name__ == "__main__":
         metrics["dialogue"] = testset["dialogue"]
         metrics["reference"] = testset["summary"]
 
-        run.log({"prompt": prompt})
-
         for i in range(COUNT):
             inputs = {"query": testset[i]["dialogue"],
-                      "reference": testset[i]["summary"]}
+                      "reference": testset[i]["summary"],
+                      "prompt": prompt}
 
             outputs = {}
             outputs["prediction"] = results["prediction"][i]
@@ -53,7 +53,7 @@ if __name__ == "__main__":
                 outputs[row] = metrics[row][i]
 
             span = Trace(
-                name=str(p),
+                name="summarize",
                 kind="llm",  # kind can be "llm", "chain", "agent" or "tool"
                 metadata={
                     "model_name": model,
@@ -65,5 +65,5 @@ if __name__ == "__main__":
             span.log(name=str(p))
 
         means = calculate_means(metrics)
-        run.log()
         run.summary.update(means)
+        run.finish()
